@@ -158,15 +158,18 @@
         /* Game Grid */
         #game-grid {
             display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(var(--card-size), 1fr));
             gap: 15px;
             justify-content: center;
             perspective: 1000px;
             margin: 0 auto;
+            width: 100%;
+            max-width: 100%;
         }
 
         .card {
-            width: var(--card-size);
-            height: var(--card-size);
+            width: 100%;
+            aspect-ratio: 1 / 1;
             position: relative;
             transform-style: preserve-3d;
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
@@ -508,13 +511,14 @@
         function loadLevel() {
             const levelData = LEVELS[currentLevel];
             grid.innerHTML = '';
-            grid.style.gridTemplateColumns = `repeat(${levelData.cols}, 1fr)`;
             
-            // Adjust card size for many cards
+            // Adjust card size for many cards to fit on screen
             if (levelData.cards > 16) {
-                document.documentElement.style.setProperty('--card-size', '80px');
+                document.documentElement.style.setProperty('--card-size', '65px');
+            } else if (levelData.cards > 8) {
+                document.documentElement.style.setProperty('--card-size', '85px');
             } else {
-                document.documentElement.style.setProperty('--card-size', '100px');
+                document.documentElement.style.setProperty('--card-size', '110px');
             }
 
             matchedPairs = 0;
