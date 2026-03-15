@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mind Maze - Strateji ve Bulmaca</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-gradient-dark: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            --bg-gradient-light: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --card-back-dark: #0f3460;
+            --card-back-light: #ffffff;
+            --accent-color: #e94560;
+            --text-dark: #ffffff;
+            --text-light: #333333;
+            --glass-dark: rgba(255, 255, 255, 0.05);
+            --glass-light: rgba(255, 255, 255, 0.6);
+            --border-dark: rgba(255, 255, 255, 0.1);
+            --border-light: rgba(0, 0, 0, 0.1);
+            
+            /* Varsayılan (Karanlık) */
+            --bg: var(--bg-gradient-dark);
+            --text: var(--text-dark);
+            --card-bg: var(--card-back-dark);
+            --glass: var(--glass-dark);
+            --border: var(--border-dark);
+            --shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        body.light-mode {
+            --bg: var(--bg-gradient-light);
+            --text: var(--text-light);
+            --card-bg: var(--card-back-light);
+            --glass: var(--glass-light);
+            --border: var(--border-light);
+            --shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            transition: background 0.5s ease, color 0.5s ease;
+        }
+
+        /* --- UI Components --- */
+        .container {
+            width: 90%;
+            max-width: 800px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        header {
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            border: 1px solid var(--border);
+            box-shadow: var(--shadow);
+        }
+
+        h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8rem;
+            background: linear-gradient(to right, #e94560, #ff00cc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0px 0px 10px rgba(233, 69, 96, 0.3);
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value {
+            color: var(--accent-color);
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        .theme-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.5rem;
+            color: var(--text);
+            transition: transform 0.3s;
+        }
+
+        .theme-btn:hover {
+            transform: rotate(20deg) scale(1.1);
+        }
+
+        /* --- Game Board --- */
+        #game-board {
+            display: grid;
+            gap: 15px;
+            perspective: 1000px;
+            margin-bottom: 20px;
+            transition: all 0.5s ease;
+            justify-content: center;
+        }
+
+        .card {
+            background-color: transparent;
+            cursor: pointer;
+            perspective: 1000px;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0.0, 0.2, 1);
+            width: 80px;
+            height: 80px;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+            cursor: default;
+        }
+
+        .card.matched {
+            transform: rotateY(180deg) scale(0.95);
+            opacity: 0.7;
+            cursor: default;
+            box-shadow: 0 0 15px var(--accent-color);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 12px;
+            font-size: 2rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        .card-front {
+            background: var(--card-bg);
+            border: 2px solid var(--border);
+            color: transparent; /* Hide text if any */
+        }
+
+        .card-front::after {
+            content: '?';
+            font-family: 'Orbitron', sans-serif;
+            color: var(--accent-color);
+            font-size: 1.5rem;
+            opacity: 0.5;
+        }
+
+        .card-back {
+            background: linear-gradient(135deg, #e94560 0%, #c5334b 100%);
+            transform: rotateY(180deg);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* --- Overlays --- */
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            border-radius: 20px;
+            backdrop-filter: blur(5px);
+            transition: opacity 0.3s;
+        }
+
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+            display: none !important;
+        }
+
+        .overlay h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+            color: #fff;
+            text-align: center;
+        }
+
+        .overlay p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            color: #ccc;
+            text-align: center;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-family: 'Orbitron', sans-serif;
+            background: var(--accent-color);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(233, 69, 96, 0.4);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 0 25px rgba(233, 69, 96, 0.6);
+        }
+
+        /* --- Progress Bar --- */
+        .timer-container {
+            width: 100%;
+            height: 6px;
+            background: var(--glass);
+            border-radius: 3px;
+            margin-top: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        #timer-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #00f260, #0575e6);
+            width: 100%;
+            transition: width 0.1s linear;
+        }
+
+        .timer-warning {
+            background: linear-gradient(90deg, #ff416c, #ff4b2b) !important;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        /* --- Particles --- */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            border-radius: 50%;
+            animation: particle-anim 1s ease-out forwards;
+            z-index: 999;
+        }
+
+        @keyframes particle-anim {
+            0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+
+        /* --- Responsive --- */
+        @media (max-width: 600px) {
+            .container { width: 95%; }
+            #game-board { gap: 8px; }
+            .card { width: 60px; height: 60px; }
+            .card-face { font-size: 1.5rem; }
+            header { flex-direction: column; gap: 10px; }
+            .stats { width: 100%; justify-content: space-between; font-size: 0.8rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <h1>MIND MAZE</h1>
+            <div class="stats">
+                <div class="stat-item">
+                    <span>SEVİYE</span>
+                    <span id="level-display" class="stat-value">1</span>
+                </div>
+                <div class="stat-item">
+                    <span>PUAN</span>
+                    <span id="score-display" class="stat-value">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>REKOR</span>
+                    <span id="highscore-display" class="stat-value">0</span>
+                </div>
+                <button class="theme-btn" id="theme-toggle">🌙</button>
+            </div>
+            <div class="timer-container">
+                <div id="timer-bar"></div>
+            </div>
+        </header>
+
+        <div id="game-board">
+            <!-- Kartlar JavaScript ile buraya eklenecek -->
+        </div>
+
+        <!-- Başlangıç Ekranı -->
+        <div id="start-screen" class="overlay">
+            <h2>MIND MAZE</h2>
+            <p>Zihninizi zorlayacak 10 seviyeli strateji bulmacası.</p>
+            <p style="font-size: 0.9rem; margin-top: -20px; color: #aaa;">Hızlı eşleşmeler ekstra puan kazandırır!</p>
+            <button class="btn" onclick="startGame()">BAŞLA</button>
+        </div>
+
+        <!-- Seviye Tamamlandı -->
+        <div id="level-screen" class="overlay hidden">
+            <h2>HARİKA!</h2>
+            <p>Seviye Tamamlandı!</p>
+            <p>Süre Bonusu: <span id="time-bonus">0</span></p>
+            <button class="btn" onclick="nextLevel()">SONRAKİ SEVİYE</button>
+        </div>
+
+        <!-- Oyun Bitti -->
+        <div id="gameover-screen" class="overlay hidden">
+            <h2>OYUN BİTTİ</h2>
+            <p>Süre doldu!</p>
+            <p>Toplam Puan: <span id="final-score">0</span></p>
+            <button class="btn" onclick="restartGame()">TEKRAR DENE</button>
+        </div>
+
+        <!-- Zafer Ekranı -->
+        <div id="victory-screen" class="overlay hidden">
+            <h2>TEBRİKLER!</h2>
+            <p>Tüm seviyeleri tamamladın!</p>
+            <p>Sen gerçek bir ustasın.</p>
+            <button class="btn" onclick="restartGame()">BAŞA DÖN</button>
+        </div>
+    </div>
+
+    <script>
+        // --- Oyun Verileri ve Ayarları ---
+        // Daha fazla icon ekledim ki yüksek seviyelerde sorun çıkmasın
+        const icons = ['🔥', '⚡', '🌟', '💎', '🚀', '🧬', '🎮', '🧩', '🎨', '🎵', '🛡️', '⚔️', '🔮', '🧿', '🍀', '🌈', '🍎', '🍒', '🎃', '🤖', '👾', '👽', '🦄', '🐲', '🌵', '🍄', '🌺', '🍔', '🍕', '🍩', '🔭', '🔬', '🚲', '⚓', '🗿', '💡'];
+        
+        const levels = [
+            { level: 1, rows: 2, cols: 2, time: 10 },    // 4 kart (2 çift)
+            { level: 2, rows: 2, cols: 3, time: 15 },    // 6 kart (3 çift)
+            { level: 3, rows: 3, cols: 4, time: 30 },    // 12 kart (6 çift)
+            { level: 4, rows: 4, cols: 4, time: 45 },    // 16 kart (8 çift)
+            { level: 5, rows: 4, cols: 5, time: 60 },    // 20 kart (10 çift)
+            { level: 6, rows: 4, cols: 6, time: 80 },    // 24 kart (12 çift)
+            { level: 7, rows: 5, cols: 6, time: 100 },   // 30 kart (15 çift)
+            { level: 8, rows: 6, cols: 6, time: 120 },   // 36 kart (18 çift)
+            { level: 9, rows: 6, cols: 6, time: 90 },    // 36 kart - HIZLI
+            { level: 10, rows: 6, cols: 6, time: 60 }    // 36 kart - ÇOK HIZLI
+        ];
+
+        // --- Durum Değişkenleri ---
+        let currentLevelIndex = 0;
+        let score = 0;
+        let highScore = localStorage.getItem('mindMazeHighScore') || 0;
+        let timerInterval;
+        let timeLeft;
+        let totalTime;
+        let hasFlippedCard = false;
+        let lockBoard = false;
+        let firstCard, secondCard;
+        let matchesFound = 0;
+        let comboMultiplier = 1;
+        let lastMatchTime = 0;
+        let gameActive = false;
+
+        // --- DOM Elementleri ---
+        const gameBoard = document.getElementById('game-board');
+        const levelDisplay = document.getElementById('level-display');
+        const scoreDisplay = document.getElementById('score-display');
+        const highscoreDisplay = document.getElementById('highscore-display');
+        const timerBar = document.getElementById('timer-bar');
+        const startScreen = document.getElementById('start-screen');
+        const levelScreen = document.getElementById('level-screen');
+        const gameoverScreen = document.getElementById('gameover-screen');
+        const victoryScreen = document.getElementById('victory-screen');
+        const themeToggle = document.getElementById('theme-toggle');
+
+        highscoreDisplay.innerText = highScore;
+
+        // --- Tema Yönetimi ---
+        themeToggle.addEventListener('click', () => {
+            document.body.classList.toggle('light-mode');
+            const isLight = document.body.classList.contains('light-mode');
+            themeToggle.innerText = isLight ? '☀️' : '🌙';
+        });
+
+        // --- Oyun Başlatma ---
+        function startGame() {
+            currentLevelIndex = 0;
+            score = 0;
+            updateScore(0);
+            startScreen.classList.add('hidden');
+            loadLevel();
+        }
+
+        function restartGame() {
+            gameoverScreen.classList.add('hidden');
+            victoryScreen.classList.add('hidden');
+            startGame();
+        }
+
+        function nextLevel() {
+            currentLevelIndex++;
+            levelScreen.classList.add('hidden');
+            if (currentLevelIndex < levels.length) {
+                loadLevel();
+            } else {
+                victoryScreen.classList.remove('hidden');
+                gameActive = false;
+            }
+        }
+
+        // --- Seviye Yükleme ---
+        function loadLevel() {
+            gameActive = true;
+            const levelData = levels[currentLevelIndex];
+            levelDisplay.innerText = levelData.level;
+            
+            // Grid ayarı
+            // Kart sayısına göre responsive grid
+            gameBoard.style.gridTemplateColumns = `repeat(${levelData.cols}, 1fr)`;
+            
+            // Kartları oluştur
+            const numPairs = (levelData.rows * levelData.cols) / 2;
+            const gameIcons = icons.slice(0, numPairs);
+            const cards = [...gameIcons, ...gameIcons];
+            shuffle(cards);
+
+            gameBoard.innerHTML = '';
+            cards.forEach(icon => {
+                const card = createCard(icon, levelData.cols);
+                gameBoard.appendChild(card);
+            });
+
+            // Reset
+            matchesFound = 0;
+            resetBoard();
+            comboMultiplier = 1;
+            
+            // Timer Başlat
+            timeLeft = levelData.time;
+            totalTime = levelData.time;
+            timerBar.style.width = '100%';
+            timerBar.classList.remove('timer-warning');
+            clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 100);
+        }
+
+        // --- Kart Oluşturma ---
+        function createCard(icon, cols) {
+            const card = document.createElement('div');
+            card.classList.add('card');
+            
+            // Kart boyutunu grid yoğunluğuna göre dinamik ayarla
+            // Çok kart varsa biraz küçültelim
+            if (cols > 4) {
+                card.style.width = '60px';
+                card.style.height = '60px';
+            } else {
+                card.style.width = '80px';
+                card.style.height = '80px';
+            }
+
+            // Mobil için boyut düzeltmesi
+            if(window.innerWidth < 600) {
+                 card.style.width = '50px';
+                 card.style.height = '50px';
+            }
+
+            card.dataset.icon = icon;
+
+            const frontFace = document.createElement('div');
+            frontFace.classList.add('card-face', 'card-front');
+
+            const backFace = document.createElement('div');
+            backFace.classList.add('card-face', 'card-back');
+            backFace.innerText = icon;
+
+            card.appendChild(frontFace);
+            card.appendChild(backFace);
+
+            card.addEventListener('click', flipCard);
+            return card;
+        }
+
+        // --- Oyun Mantığı ---
+        function flipCard() {
+            if (!gameActive) return;
+            if (lockBoard) return;
+            if (this === firstCard) return;
+            if (this.classList.contains('matched') || this.classList.contains('flipped')) return;
+
+            this.classList.add('flipped');
+
+            if (!hasFlippedCard) {
+                hasFlippedCard = true;
+                firstCard = this;
+                return;
+            }
+
+            secondCard = this;
+            checkForMatch();
+        }
+
+        function checkForMatch() {
+            lockBoard = true; // İkinci kart seçildiği anda tahtayı kilitle
+            let isMatch = firstCard.dataset.icon === secondCard.dataset.icon;
+
+            if (isMatch) {
+                handleMatch();
+            } else {
+                unflipCards();
+            }
+        }
+
+        function handleMatch() {
+            // Referansları sakla çünkü resetBoard bunları null yapacak
+            const card1 = firstCard;
+            const card2 = secondCard;
+
+            // Kartları devre dışı bırak (listener'ları kaldır ve sınıfları ekle)
+            card1.removeEventListener('click', flipCard);
+            card2.removeEventListener('click', flipCard);
+            card1.classList.add('matched');
+            card2.classList.add('matched');
+            
+            // Combo Sistemi
+            const now = Date.now();
+            if (now - lastMatchTime < 2500) { 
+                comboMultiplier = Math.min(comboMultiplier + 0.5, 5.0);
+                createFloater(card2, `COMBO x${comboMultiplier}!`, '#ffd700');
+            } else {
+                comboMultiplier = 1;
+            }
+            lastMatchTime = now;
+
+            const points = Math.floor(50 * comboMultiplier);
+            updateScore(points);
+            
+            // Görsel Efektler (Artık güvenli)
+            spawnParticles(card1);
+            spawnParticles(card2);
+            
+            matchesFound++;
+            const levelData = levels[currentLevelIndex];
+            const totalPairs = (levelData.rows * levelData.cols) / 2;
+
+            if (matchesFound === totalPairs) {
+                clearInterval(timerInterval);
+                gameActive = false;
+                setTimeout(levelComplete, 1000);
+            }
+
+            // İşlemler bitince board'u resetle
+            resetBoard();
+        }
+
+        function unflipCards() {
+            comboMultiplier = 1; 
+            
+            setTimeout(() => {
+                if (firstCard) firstCard.classList.remove('flipped');
+                if (secondCard) secondCard.classList.remove('flipped');
+                resetBoard();
+            }, 800);
+        }
+
+        function resetBoard() {
+            hasFlippedCard = false;
+            lockBoard = false;
+            firstCard = null;
+            secondCard = null;
+        }
+
+        function shuffle(array) {
+            // Fisher-Yates Shuffle (Daha kaliteli karıştırma)
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // --- Skor ve Timer ---
+        function updateScore(points) {
+            score += points;
+            scoreDisplay.innerText = score;
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('mindMazeHighScore', highScore);
+                highscoreDisplay.innerText = highScore;
+            }
+        }
+
+        function updateTimer() {
+            if(!gameActive) return;
+            
+            timeLeft -= 0.1;
+            const percentage = (timeLeft / totalTime) * 100;
+            timerBar.style.width = `${percentage}%`;
+
+            if (percentage < 30) {
+                timerBar.classList.add('timer-warning');
+            }
+
+            if (timeLeft <= 0) {
+                clearInterval(timerInterval);
+                gameActive = false;
+                gameOver();
+            }
+        }
+
+        function levelComplete() {
+            const bonus = Math.floor(timeLeft * 10);
+            updateScore(bonus);
+            document.getElementById('time-bonus').innerText = bonus;
+            levelScreen.classList.remove('hidden');
+        }
+
+        function gameOver() {
+            document.getElementById('final-score').innerText = score;
+            gameoverScreen.classList.remove('hidden');
+        }
+
+        // --- Görsel Efektler (Parçacıklar) ---
+        function spawnParticles(element) {
+            const rect = element.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+
+            for (let i = 0; i < 15; i++) {
+                const particle = document.createElement('div');
+                particle.classList.add('particle');
+                
+                const size = Math.random() * 8 + 4;
+                particle.style.width = `${size}px`;
+                particle.style.height = `${size}px`;
+                particle.style.background = `hsl(${Math.random() * 60 + 30}, 100%, 60%)`; // Gold/Orange colors
+                
+                particle.style.left = `${centerX}px`;
+                particle.style.top = `${centerY}px`;
+
+                const tx = (Math.random() - 0.5) * 200;
+                const ty = (Math.random() - 0.5) * 200;
+                particle.style.setProperty('--tx', `${tx}px`);
+                particle.style.setProperty('--ty', `${ty}px`);
+
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 1000);
+            }
+        }
+
+        function createFloater(element, text, color) {
+            const rect = element.getBoundingClientRect();
+            const floater = document.createElement('div');
+            floater.innerText = text;
+            floater.style.position = 'fixed';
+            floater.style.left = (rect.left + 20) + 'px'; // Biraz sağa
+            floater.style.top = rect.top + 'px';
+            floater.style.color = color;
+            floater.style.fontWeight = 'bold';
+            floater.style.fontFamily = 'Orbitron, sans-serif';
+            floater.style.fontSize = '1.2rem';
+            floater.style.textShadow = '0 0 5px rgba(0,0,0,0.8)';
+            floater.style.pointerEvents = 'none';
+            floater.style.zIndex = 1000;
+            floater.style.transition = 'all 0.8s ease-out';
+            
+            document.body.appendChild(floater);
+            
+            // Animasyonu başlat
+            requestAnimationFrame(() => {
+                floater.style.transform = 'translateY(-50px) scale(1.2)';
+                floater.style.opacity = 0;
+            });
+            
+            setTimeout(() => floater.remove(), 1000);
+        }
+    </script>
+</body>
+</html>
